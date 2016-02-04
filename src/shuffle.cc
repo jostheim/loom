@@ -48,7 +48,7 @@ int main (int argc, char ** argv)
     Args args(argc, argv, help_message);
     const char * rows_in = args.pop();
     const char * rows_out = args.pop();
-    const long seed = args.pop_default(0L);
+    const long seed = args.pop_default((int64_t) 0L);
     const double target_mem_bytes = args.pop_default(4e9);
     args.done();
 

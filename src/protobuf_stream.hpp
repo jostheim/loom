@@ -187,7 +187,7 @@ private:
             fid_ = STDIN_FILENO;
         } else {
             is_file_ = true;
-            fid_ = open(filename_.c_str(), O_RDONLY | O_NOATIME);
+            fid_ = open(filename_.c_str(), O_RDONLY );
             LOOM_ASSERT(fid_ != -1, "failed to open input file " << filename_);
         }
 
