@@ -27,6 +27,8 @@ This guide describes how to install both loom and distributions.
 
     # 4. Install required packages.
     sudo easy_install pip
+    # on mac use homebrew, however you'll want to compile protobuf by hand
+    # to ensure it is compiled agaisnt gcc 4.8 (see above)
     source loom/requirements.sh     # uses apt and pip
 
     # 5. Build distributions.
