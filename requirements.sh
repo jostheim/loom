@@ -4,9 +4,9 @@ if [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
 	sudo apt-get install -y \
 	    make \
 	    cmake \
-	    g++ \
+	    gcc-4.8 \
 	    protobuf-compiler \
-	    libprotobuf-dev \
+#	    libprotobuf-dev \
 	    libgoogle-perftools-dev \
 	    libboost-python-dev \
 	    libeigen3-dev \
@@ -30,5 +30,6 @@ elif [ "$(uname)" == "Darwin" ]; then
 	brew install unzip
 fi
 
+echo "Now you have to build protobuf (in external_lib) on your own b/c it is an older version"
 # install distributions separately
 grep -v distributions requirements.txt | xargs pip install
