@@ -20,8 +20,8 @@ if [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
 elif [ "$(uname)" == "Darwin" ]; then
 	brew install make
 	brew install cmake
-	brew install gcc48 --with-fortran
-	CC=gcc4.8 CXX=g++-4.8 brew homebrew/versions/protobuf241
+	brew install homebrew/version/gcc48 --with-fortran
+	CC=gcc4.8 CXX=g++-4.8 brew install homebrew/versions/protobuf241
 	brew install google-perftools
 	brew install boost-python
 	brew install eigen

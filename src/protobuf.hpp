@@ -58,7 +58,7 @@ struct Fields<Typename>                                             \
     {                                                               \
         return * value.mutable_ ## fieldname();                     \
     }                                                               \
-    static const auto get (const ProductValue & value)              \
+    static auto get (const ProductValue & value)              \
         -> decltype(value.fieldname())                              \
     {                                                               \
         return value.fieldname();                                   \
@@ -110,7 +110,7 @@ struct Fields<Typename>                                             \
     {                                                               \
         return * value.mutable_ ## fieldname();                     \
     }                                                               \
-    static const auto get (const ProductModel::Shared & value)      \
+    static auto get (const ProductModel::Shared & value)      \
         -> decltype(value.fieldname())                              \
     {                                                               \
         return value.fieldname();                                   \
@@ -120,12 +120,12 @@ struct Fields<Typename>                                             \
     {                                                               \
         return * value.mutable_ ## fieldname();                     \
     }                                                               \
-    static const auto get (const ProductModel::Group & value)       \
+    static auto get (const ProductModel::Group & value)       \
         -> decltype(value.fieldname())                              \
     {                                                               \
         return value.fieldname();                                   \
     }                                                               \
-    static const auto get (const HyperPrior & value)                \
+    static auto get (const HyperPrior & value)                \
         -> decltype(value.fieldname())                              \
     {                                                               \
         return value.fieldname();                                   \
