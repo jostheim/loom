@@ -129,6 +129,7 @@ class PreQL(object):
         feature_names - a list of all feature names
         converters - a dict of converters for use in pandas.read_csv
     '''
+
     def __init__(self, query_server, encoding=None, debug=False):
         self._paths = loom.store.get_paths(query_server.root)
         if encoding is None:
@@ -142,15 +143,15 @@ class PreQL(object):
         self._name_to_pos = {
             name: i
             for i, name in enumerate(self._feature_names)
-        }
+            }
         self._name_to_decode = {
             e['name']: load_decoder(e)
             for e in self._encoders
-        }
+            }
         self._name_to_encode = {
             e['name']: load_encoder(e)
             for e in self._encoders
-        }
+            }
         self._rowid_map = None
         self._debug = debug
 
@@ -171,7 +172,7 @@ class PreQL(object):
                 self._rowid_map = {
                     int(internal_id): external_id
                     for internal_id, external_id in reader
-                }
+                    }
         return self._rowid_map
 
     def close(self):
@@ -218,7 +219,7 @@ class PreQL(object):
                     encoded_row.append(encode(value))
                 except:
                     raise ValueError(
-                        'bad value at position {}: {}'.format(pos, value))
+                            'bad value at position {}: {}'.format(pos, value))
             else:
                 encoded_row.append(None)
         return encoded_row
@@ -234,7 +235,7 @@ class PreQL(object):
                     decoded_row.append(decode(value))
                 except:
                     raise ValueError(
-                        'bad value at position {}: {}'.format(pos, value))
+                            'bad value at position {}: {}'.format(pos, value))
             else:
                 decoded_row.append(None)
         return decoded_row
@@ -272,11 +273,11 @@ class PreQL(object):
             conditioning_row=None,
             sample_count=None):
         mi = self._query_server.mutual_information(
-            feature_set1=feature_set1,
-            feature_set2=feature_set2,
-            entropys=entropys,
-            conditioning_row=conditioning_row,
-            sample_count=sample_count).mean
+                feature_set1=feature_set1,
+                feature_set2=feature_set2,
+                entropys=entropys,
+                conditioning_row=conditioning_row,
+                sample_count=sample_count).mean
         return normalize_mutual_information(mi)
 
     def predict(self, rows_csv, count, result_out=None, id_offset=True):
@@ -328,9 +329,9 @@ class PreQL(object):
             conditioning_row = self.encode_row(row, header)
             to_sample = [value is None for value in conditioning_row]
             samples = self._query_server.sample(
-                to_sample,
-                conditioning_row,
-                count)
+                    to_sample,
+                    conditioning_row,
+                    count)
             for sample in samples:
                 print sample
                 sample = self.decode_row(sample, header)
@@ -375,11 +376,11 @@ class PreQL(object):
         conditioning_row = self.encode_row(None)
         with csv_output(result_out) as writer:
             self._relate(
-                target_feature_sets,
-                query_feature_sets,
-                conditioning_row,
-                writer,
-                sample_count)
+                    target_feature_sets,
+                    query_feature_sets,
+                    conditioning_row,
+                    writer,
+                    sample_count)
             return writer.result()
 
     def refine(
@@ -435,26 +436,86 @@ class PreQL(object):
         target_feature_sets = map(self.encode_set, target_feature_sets)
         query_feature_sets = map(self.encode_set, query_feature_sets)
         unobserved_features = frozenset.union(*target_feature_sets) | \
-            frozenset.union(*query_feature_sets)
+                              frozenset.union(*query_feature_sets)
         mismatches = []
         for feature, condition in fc_zip:
             if feature in unobserved_features and condition is not None:
                 mismatches.append(feature)
         if mismatches:
             raise ValueError(
-                'features {} must be None in conditioning row {}'.format(
-                    mismatches,
-                    conditioning_row))
+                    'features {} must be None in conditioning row {}'.format(
+                            mismatches,
+                            conditioning_row))
         self._validate_feature_sets(target_feature_sets)
         self._validate_feature_sets(query_feature_sets)
         with csv_output(result_out) as writer:
             self._relate(
-                target_feature_sets,
-                query_feature_sets,
-                conditioning_row,
-                writer,
-                sample_count)
+                    target_feature_sets,
+                    query_feature_sets,
+                    conditioning_row,
+                    writer,
+                    sample_count)
             return writer.result()
+
+    def conditional_relate(self,
+                           X=None,
+                           Y=None,
+                           Z=None,
+                           result_out=None,
+                           sample_count=SAMPLE_COUNT):
+        '''
+        I(X;Y|Z) = H(X,Z) + H(Y,Z) - H(X,Y,Z) - H(Z)
+        '''
+        # X
+        X = map(self.encode_set, X)
+        # Y
+        Y = map(self.encode_set, Y)
+        # Z
+        Z = map(self.encode_set, Z)
+        self._validate_feature_sets(X)
+        self._validate_feature_sets(Y)
+        self._validate_feature_sets(Z)
+
+        for tfs in X:
+            for qfs in Y:
+                if tfs.intersection(qfs):
+                    raise ValueError('target features and query features'
+                                     ' must be disjoint:'
+                                     ' {} {}'.format(tfs, qfs))
+                for cfs in Z:
+                    if cfs.intersection(qfs):
+                        raise ValueError('conditional features and query features'
+                                         ' must be disjoint:'
+                                         ' {} {}'.format(cfs, qfs))
+                    if cfs.intersection(tfs):
+                        raise ValueError('conditional features and target features'
+                                         ' must be disjoint:'
+                                         ' {} {}'.format(cfs, tfs))
+
+        X_sets = map(self._cols_to_mask, X)
+        Y_sets = map(self._cols_to_mask, Y)
+        Z_sets = map(self._cols_to_mask, Z)
+        # target_labels = map(min, target_feature_set)
+        # query_labels = map(min, query_feature_set)
+        # conditional_labels = map(min, Z)
+
+        new_target_sets = X_sets + Y_sets + Z_sets
+        new_query_sets = [[X_sets, Z], [Y_sets, Z], [Z]]
+        entropies = {}
+        for key, val in self._query_server.entropy(new_target_sets, new_query_sets,
+                                                   sample_count=sample_count).iteritems():
+            vars = key
+            # vars = []
+            # for k in key:
+            #     vars.append(idx_name_d[k])
+            if len(key) > 0:
+                entropies[tuple(sorted(vars))] = (val.mean, val.variance)
+        #         I(X;Y|Z) = H(X,Z) + H(Y,Z) - H(X,Y,Z) - H(Z)
+        cond_mi = entropies[tuple(sorted([X_sets, Z_sets]))][0] + \
+                  entropies[tuple(sorted([Y_sets, Z_sets]))][0] - \
+                  entropies[tuple(sorted([X_sets, Y_sets, Z_sets]))][0] - \
+                  entropies[tuple(sorted([Z_sets]))][0]
+        return normalize_mutual_information(cond_mi)
 
     def support(
             self,
@@ -509,7 +570,7 @@ class PreQL(object):
         conditioning_row = self.encode_row(conditioning_row)
         if all(c is None for c in conditioning_row):
             raise ValueError(
-                'conditioning row must have at least one observation')
+                    'conditioning row must have at least one observation')
         fc_zip = zip(self._feature_names, conditioning_row)
         if target_feature_sets is None:
             target_feature_sets = [[f] for f, c in fc_zip if c is not None]
@@ -520,23 +581,23 @@ class PreQL(object):
         self._validate_feature_sets(target_feature_sets)
         self._validate_feature_sets(observed_feature_sets)
         observed_features = frozenset.union(*target_feature_sets) | \
-            frozenset.union(*observed_feature_sets)
+                            frozenset.union(*observed_feature_sets)
         mismatches = []
         for feature, condition in fc_zip:
             if feature in observed_features and condition is None:
                 mismatches.append(feature)
         if mismatches:
             raise ValueError(
-                'features {} must not be None in conditioning row {}'.format(
-                    mismatches,
-                    conditioning_row))
+                    'features {} must not be None in conditioning row {}'.format(
+                            mismatches,
+                            conditioning_row))
         with csv_output(result_out) as writer:
             self._relate(
-                target_feature_sets,
-                observed_feature_sets,
-                conditioning_row,
-                writer,
-                sample_count)
+                    target_feature_sets,
+                    observed_feature_sets,
+                    conditioning_row,
+                    writer,
+                    sample_count)
             return writer.result()
 
     def _relate(
@@ -567,10 +628,10 @@ class PreQL(object):
         target_labels = map(min, target_feature_sets)
         query_labels = map(min, query_feature_sets)
         entropys = self._query_server.entropy(
-            row_sets=target_sets,
-            col_sets=query_sets,
-            conditioning_row=conditioning_row,
-            sample_count=sample_count)
+                row_sets=target_sets,
+                col_sets=query_sets,
+                conditioning_row=conditioning_row,
+                sample_count=sample_count)
         writer.writerow([None] + query_labels)
         for target_label, target_set in izip(target_labels, target_sets):
             result_row = [target_label]
@@ -583,17 +644,17 @@ class PreQL(object):
                         forgetful_conditioning_row[feature_index] = None
                     if forgetful_conditioning_row != conditioning_row:
                         normalized_mi = self._normalized_mutual_information(
-                            target_set,
-                            query_set,
-                            entropys=None,
-                            conditioning_row=forgetful_conditioning_row,
-                            sample_count=sample_count)
+                                target_set,
+                                query_set,
+                                entropys=None,
+                                conditioning_row=forgetful_conditioning_row,
+                                sample_count=sample_count)
                     else:
                         normalized_mi = self._normalized_mutual_information(
-                            target_set,
-                            query_set,
-                            entropys=entropys,
-                            sample_count=sample_count)
+                                target_set,
+                                query_set,
+                                entropys=entropys,
+                                sample_count=sample_count)
                 result_row.append(normalized_mi)
             writer.writerow(result_row)
 
@@ -665,9 +726,9 @@ class PreQL(object):
         update_row_results = []
         for update_row in update_rows:
             results = self._query_server.score_derivative(
-                update_row,
-                score_rows,
-                row_limit=row_limit)
+                    update_row,
+                    score_rows,
+                    row_limit=row_limit)
             results_dict = dict(results)
             update_row_results.append(results_dict)
             score_ids = score_ids.union(set(results_dict.keys()))
@@ -692,9 +753,9 @@ class PreQL(object):
 
     def _search(self, row, row_limit, writer):
         results = self._query_server.score_derivative(
-            row,
-            score_rows=None,
-            row_limit=row_limit)
+                row,
+                score_rows=None,
+                row_limit=row_limit)
         # FIXME map through erf
         writer.writerow(('row_id', 'score'))
         for row_id, score in results:
@@ -709,19 +770,19 @@ class PreQL(object):
             nearest_neighbors=10):
         if seed_rows is None:
             seed_rows = self._query_server.sample(
-                [None for _ in self.feature_names],
-                sample_count=SAMPLE_COUNT)
+                    [None for _ in self.feature_names],
+                    sample_count=SAMPLE_COUNT)
         row_limit = len(seed_rows) ** 2 + 1
         similar_string = StringIO(self.similar(seed_rows, row_limit=row_limit))
         similar = numpy.genfromtxt(
-            similar_string,
-            delimiter=',',
-            skip_header=0)
+                similar_string,
+                delimiter=',',
+                skip_header=0)
         similar = similar.clip(0., 5.)
         similar = numpy.exp(similar)
         clustering = SpectralClustering(
-            n_clusters=cluster_count,
-            affinity='precomputed')
+                n_clusters=cluster_count,
+                affinity='precomputed')
         labels = clustering.fit_predict(similar)
 
         if rows_to_cluster is None:
@@ -730,13 +791,13 @@ class PreQL(object):
             row_labels = []
             for row in rows_to_cluster:
                 similar_scores = self.similar(
-                    [row],
-                    seed_rows,
-                    row_limit=row_limit)
+                        [row],
+                        seed_rows,
+                        row_limit=row_limit)
                 similar_scores = numpy.genfromtxt(
-                    StringIO(similar_scores),
-                    delimiter=',',
-                    skip_header=0)
+                        StringIO(similar_scores),
+                        delimiter=',',
+                        skip_header=0)
                 assert len(similar_scores) == len(labels)
                 label_scores = zip(similar_scores, labels)
                 top = sorted(label_scores, reverse=True)[:nearest_neighbors]

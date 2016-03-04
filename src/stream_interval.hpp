@@ -42,9 +42,7 @@ public:
     StreamInterval (const char * rows_in) :
         unassigned_(rows_in),
         assigned_(rows_in)
-    {
-    }
-
+}
     void load (const protobuf::Checkpoint::StreamInterval & rows)
     {
         #pragma omp parallel sections
